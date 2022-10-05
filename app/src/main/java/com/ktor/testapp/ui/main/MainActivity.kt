@@ -5,17 +5,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.snackbar.Snackbar
 import com.ktor.testapp.R
-import com.ktor.testapp.data.remote.PostsService
 import com.ktor.testapp.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : AppCompatActivity() {
 
     //Binding
-    private lateinit var binding :ActivityMainBinding
+    private lateinit var binding: ActivityMainBinding
 
-    //
-    private val service = PostsService.create()
+    //ViewModel
+    private val vm by viewModel<MainViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,21 +26,21 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            val returned = async {
-                service.getPosts()
-            }
+        //Reload the posts
+        binding.btnReload.setOnClickListener {
+            vm.getPosts()
+        }
 
-            withContext(Dispatchers.Main) {
-                val postsList = returned.await()
-                postsList.forEach { post ->
-                    "${post.id} ${post.userId} ${post.title} ${post.body}".shortSnackBar()
-                    delay(1000)
+        lifecycleScope.launchWhenStarted {
+            vm.postsMutableStateFlow.collectLatest { postsList ->
+                withContext(Dispatchers.Main) {
+                    postsList.forEach { post ->
+                        "${post.id} ${post.userId} ${post.title} ${post.body}".shortSnackBar()
+                        delay(1000)
+                    }
                 }
             }
         }
-
-
 
 
     }
